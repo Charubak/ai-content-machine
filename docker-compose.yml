@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - BUFFER_ACCESS_TOKEN=${BUFFER_ACCESS_TOKEN:-}
+      - X_BEARER_TOKEN=${X_BEARER_TOKEN:-}
+      - VOICES_PATH=/app/voices
+    volumes:
+      - ./voices:/app/voices
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:8000
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python publishing/scheduler.py
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - BUFFER_ACCESS_TOKEN=${BUFFER_ACCESS_TOKEN:-}
+      - X_BEARER_TOKEN=${X_BEARER_TOKEN:-}
+      - VOICES_PATH=/app/voices
+    volumes:
+      - ./voices:/app/voices
+    depends_on:
+      - backend
+    restart: unless-stopped
