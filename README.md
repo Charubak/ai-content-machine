@@ -47,13 +47,21 @@ Writing samples + intake
 
 ---
 
-## Demo
+## Live Demo
 
-Go to the **Demo** tab on the live UI — no login required. Paste a raw thought, pick a tone, and get 4 platform variants with slop scores in ~10 seconds.
+**[web3growthlab.com/content-machine](https://web3growthlab.com/content-machine)** — no login required.
+
+Paste a raw thought, pick a tone, and get 4 platform variants with slop scores in ~10 seconds.
+
+| | URL |
+|---|---|
+| Frontend | https://web3growthlab.com/content-machine |
+| Backend API | https://ai-content-machine-api.fly.dev |
+| API Docs | https://ai-content-machine-api.fly.dev/docs |
 
 ---
 
-## Quick Start
+## Quick Start (Local Development)
 
 ### Prerequisites
 
@@ -98,6 +106,8 @@ npm run dev
 3. Select **Hybrid** tone
 4. Hit **Generate Content**
 5. You'll get 4 content variants with slop scores
+
+> **Already deployed?** The live version is at [web3growthlab.com/content-machine](https://web3growthlab.com/content-machine) — backend on Fly.io at `ai-content-machine-api.fly.dev`.
 
 ---
 
@@ -181,7 +191,9 @@ ai-content-machine/
 | GET | `/queue/{client_id}` | Get brief suggestions from RSS monitor |
 | GET | `/clients` | List all configured clients |
 
-Full interactive docs at: `http://localhost:8000/docs`
+Full interactive docs:
+- **Production:** https://ai-content-machine-api.fly.dev/docs
+- **Local:** http://localhost:8000/docs
 
 ---
 
@@ -207,7 +219,7 @@ To onboard a new client:
 python onboard_cli.py --client-id yourname
 
 # Or via the web UI
-# Go to http://localhost:3000 → Voice Setup tab
+# Go to https://web3growthlab.com/content-machine → Voice Setup tab
 ```
 
 ---
