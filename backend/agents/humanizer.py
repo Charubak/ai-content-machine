@@ -62,6 +62,13 @@ HOLLOW_AFFIRMATIVES = [
 EM_DASH_PATTERN = r"—"
 NEGATIVE_PARALLELISM = r"not only .{5,60} but (also )?[\w]"
 HYPHENATED_PAIRS = r"\b(ever-evolving|thought-provoking|game-changing|fast-paced|wide-ranging|far-reaching|cutting-edge|well-established|long-standing|high-quality|in-depth|up-to-date|state-of-the-art)\b"
+ELLIPSIS_PATTERN = r"\.\.\."
+
+# "That is not X. It is Y." — AI's favourite rhetorical declaration
+AI_DECLARATION = r"(that|this|it|the \w+) is not (the )?\w[\w\s]{0,40}\.\s+(that|this|it|the \w+) is (the )?\w"
+
+# "not X, not Y, but Z" / "not the wallet. not the blockchain."
+SERIAL_NEGATION = r"(not the \w+[\.,]\s*){2,}"
 
 
 @dataclass
@@ -127,12 +134,48 @@ def check_hollow_affirmatives(text: str) -> list[PatternMatch]:
 
 def check_em_dashes(text: str) -> list[PatternMatch]:
     count = len(re.findall(EM_DASH_PATTERN, text))
-    if count >= 2:
+    if count >= 1:
         return [PatternMatch(
-            pattern_name="Em Dash Overuse",
-            example=f"{count} em dashes found",
+            pattern_name="Em Dash",
+            example=f"{count} em dash(es) found",
+            severity="high",
+            why="Em dashes are a primary AI tell. Use a comma, colon, or restructure the sentence entirely."
+        )]
+    return []
+
+
+def check_ellipsis(text: str) -> list[PatternMatch]:
+    matches = re.findall(ELLIPSIS_PATTERN, text)
+    if matches:
+        return [PatternMatch(
+            pattern_name="Ellipsis",
+            example=f"{len(matches)} instance(s) of '...' found",
+            severity="high",
+            why="Ellipsis in professional content signals lazy writing or AI generation. Complete the thought or cut it."
+        )]
+    return []
+
+
+def check_ai_declarations(text: str) -> list[PatternMatch]:
+    matches = re.findall(AI_DECLARATION, text, re.IGNORECASE)
+    if matches:
+        return [PatternMatch(
+            pattern_name="AI Declaration Pattern",
+            example="'X is not Y. X is Z.' construction",
+            severity="high",
+            why="The 'That is not X. It is Y.' rhetorical structure is a heavy AI tell. State the point directly without the setup."
+        )]
+    return []
+
+
+def check_serial_negation(text: str) -> list[PatternMatch]:
+    matches = re.findall(SERIAL_NEGATION, text, re.IGNORECASE)
+    if matches:
+        return [PatternMatch(
+            pattern_name="Serial Negation",
+            example="'not the X. not the Y.' pattern",
             severity="medium",
-            why="Multiple em dashes in a single piece is a strong AI signal. Use commas, colons, or restructure."
+            why="Stacking 'not X, not Y' before the real point is an AI rhetorical crutch. Lead with the actual claim."
         )]
     return []
 
@@ -197,6 +240,9 @@ def score_content(text: str) -> HumanizerResult:
     all_patterns.extend(check_banned_phrases(text))
     all_patterns.extend(check_hollow_affirmatives(text))
     all_patterns.extend(check_em_dashes(text))
+    all_patterns.extend(check_ellipsis(text))
+    all_patterns.extend(check_ai_declarations(text))
+    all_patterns.extend(check_serial_negation(text))
     all_patterns.extend(check_negative_parallelisms(text))
     all_patterns.extend(check_hyphenated_pairs(text))
     all_patterns.extend(check_rule_of_three(text))

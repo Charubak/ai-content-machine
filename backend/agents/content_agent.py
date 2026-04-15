@@ -34,6 +34,7 @@ class ContentBrief:
     source_url: str = ""                  # URL to react to (for reaction posts)
     source_text: str = ""                 # Pasted context (for reaction or narrative posts)
     platform_priority: str = "linkedin"   # Primary platform: linkedin / x / both
+    company_voice: bool = False           # True = company "we" voice, False = personal "I" voice
     voice_version: int = None             # Specific voice version, None = latest
     voices_path: str = "voices"
 
@@ -52,10 +53,47 @@ class ContentOutput:
 
 # ─── System Prompt Builder ────────────────────────────────────────────────────
 
-def build_system_prompt(voice_document: str) -> str:
-    return f"""You are a content writer generating social media content for a specific person or brand.
+def build_system_prompt(voice_document: str, company_voice: bool = False) -> str:
+    voice_mode = "company" if company_voice else "personal"
+    pov_instruction = (
+        "Write in the company's voice — use 'we', 'our', 'the team'. "
+        "Perspective is the company sharing what it has learned and built, not a founder's personal narrative. "
+        "Reference the company name and products naturally."
+        if company_voice else
+        "Write in first person — 'I', 'my', 'we' where team is referenced. "
+        "Perspective is the founder/operator sharing personal experience and hard-won insight."
+    )
+
+    return f"""You are a professional content writer generating social media posts for a specific {voice_mode}.
 
 {voice_document}
+
+---
+
+## VOICE MODE: {voice_mode.upper()}
+
+{pov_instruction}
+
+---
+
+## QUALITY BAR — READ THIS BEFORE WRITING
+
+Before writing a single word, define what a good post looks like for this brief:
+- What is the ONE thing this post needs to make the reader understand or feel?
+- What specific fact, number, or observation makes this credible?
+- What would a senior operator in this industry find worth sharing?
+
+A post passes the Turing test if:
+- A human expert in this field would nod reading it
+- You could not remove the author's name and paste it on another account
+- It contains at least one specific detail that could only come from direct experience
+- It does not try to sound smart — it just is
+
+A post fails if:
+- It uses rhetorical setup structures ("The problem is not X. The real problem is Y.")
+- It lists observations without building to a single clear conclusion
+- It reads like a summary of a topic rather than a take on it
+- Any sentence could be deleted without losing meaning
 
 ---
 
@@ -64,23 +102,27 @@ def build_system_prompt(voice_document: str) -> str:
 Return ONLY valid JSON. No markdown fences, no preamble. Exact structure:
 
 {{
-  "linkedin_long": "Full long-form LinkedIn post (600-900 words). No headers. No bullet lists. One continuous human argument. Hook in first 1-3 sentences. Develops with depth. Ends with specific takeaway or open observation, never a CTA.",
-  "linkedin_short": "Short LinkedIn post (150-250 words). One sharp observation. 2-3 paragraphs. First line must work as a standalone sentence. No CTA at end.",
-  "x_thread": ["tweet 1 (hook, works standalone)", "tweet 2", "tweet 3", "tweet 4", "tweet 5", "tweet 6", "tweet 7", "tweet 8 (landing, not a summary)"],
-  "x_single": "Single tweet under 240 characters. No hashtags. One observation.",
-  "community_message": "Discord/Telegram message variant (100-150 words). Slightly more conversational. Same substance."
+  "linkedin_long": "Full long-form post (600-900 words). No headers. No bullet lists. One continuous argument that builds. Hook in first 1-2 sentences — specific and direct, no scene-setting. Each paragraph earns its place. Ends with a specific observation, not a CTA or summary.",
+  "linkedin_short": "Short post (150-250 words). One sharp observation developed into a clear point. 2-3 paragraphs. First sentence works standalone. Last sentence is a conclusion, not a CTA.",
+  "x_thread": ["tweet 1: hook — a specific claim or counterintuitive fact, works standalone", "tweet 2: the mechanism — why is this true?", "tweet 3: specific data point or real example", "tweet 4: the implication most people miss", "tweet 5: another concrete detail", "tweet 6: the common mistake", "tweet 7: what the right approach actually is", "tweet 8: landing — a specific conclusion, not a summary or inspiration quote"],
+  "x_single": "Single tweet under 240 characters. One specific claim. No hashtags. No ellipsis.",
+  "community_message": "Discord/Telegram message (100-150 words). More direct, less polished. Same substance, conversational register."
 }}
 
-## CRITICAL RULES
+---
 
-- Never use em dashes anywhere
-- Never use banned words from the voice document
-- Never use banned phrases from the voice document
-- Draw on specific credentials and real experience where relevant
-- Never fabricate numbers or outcomes not provided in the brief
-- LinkedIn long-form: reads as written by a human who thought carefully about one thing
-- X thread: each tweet one idea, numbers and specifics in at least 3 middle tweets
-- If source text is provided, react to it specifically, not generically"""
+## ABSOLUTE RULES — NEVER BREAK THESE
+
+- No em dashes anywhere. Not one. Use commas, colons, or restructure.
+- No ellipsis (...) anywhere. Complete the thought or cut it.
+- No rhetorical setup: never write "X is not the problem. Y is the problem." State Y directly.
+- No serial negation: never stack "not X. not Y. it is Z." Lead with Z.
+- No banned words or phrases from the voice document
+- Never fabricate numbers, outcomes, or quotes not given in the brief
+- No hollow endings: no "only time will tell", no "the future is bright", no "exciting times ahead"
+- No sycophantic openers in any format
+- Tweets must each contain a distinct specific idea — not variations of the same sentence
+- Professional tone throughout — confident, not casual; direct, not cold"""
 
 
 # ─── Generation ───────────────────────────────────────────────────────────────
@@ -119,7 +161,7 @@ def generate_content(
         base_path=brief.voices_path
     )
 
-    system = build_system_prompt(voice_doc)
+    system = build_system_prompt(voice_doc, company_voice=brief.company_voice)
     user_msg = build_user_message(brief)
 
     # Generate

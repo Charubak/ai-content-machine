@@ -99,6 +99,7 @@ class GenerateRequest(BaseModel):
     source_url: str = ""
     source_text: str = ""
     platform_priority: str = "both"
+    company_voice: bool = False
     voice_version: Optional[int] = None
 
 
@@ -282,6 +283,7 @@ def generate(req: GenerateRequest):
             source_url=req.source_url,
             source_text=req.source_text,
             platform_priority=req.platform_priority,
+            company_voice=req.company_voice,
             voice_version=req.voice_version,
             voices_path=VOICES_PATH
         )
