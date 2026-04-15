@@ -153,6 +153,7 @@ export default function Dashboard() {
   const [credential, setCredential] = useState("");
   const [dataPoint, setDataPoint] = useState("");
   const [sourceText, setSourceText] = useState("");
+  const [companyVoice, setCompanyVoice] = useState(false);
 
   const loadPosts = async (cid) => {
     if (!cid) return;
@@ -186,7 +187,8 @@ export default function Dashboard() {
           client_id: activeClientId,
           topic, angle, format, credential,
           data_point: dataPoint, source_text: sourceText,
-          platform_priority: "both"
+          platform_priority: "both",
+          company_voice: companyVoice,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).detail);
@@ -287,6 +289,13 @@ export default function Dashboard() {
                 {FORMATS.map(f => (
                   <button key={f} onClick={() => setFormat(f)} style={S.btn(format === f)}>{f}</button>
                 ))}
+              </div>
+              <div style={{ marginTop: "0.8rem" }}>
+                <span style={S.label}>VOICE</span>
+                <div style={{ display: "flex", gap: "0.3rem" }}>
+                  <button onClick={() => setCompanyVoice(false)} style={S.btn(!companyVoice)}>PERSONAL (I)</button>
+                  <button onClick={() => setCompanyVoice(true)} style={S.btn(companyVoice)}>COMPANY (WE)</button>
+                </div>
               </div>
             </div>
           </div>
