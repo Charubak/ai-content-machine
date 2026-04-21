@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Demo from "./pages/Demo";
+import SimpleGenerator from "./pages/SimpleGenerator";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import HowItWorks from "./pages/HowItWorks";
@@ -10,7 +11,8 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 export { API_BASE };
 
 const NAV_ITEMS = [
-  { id: "demo", label: "Live Demo" },
+  { id: "generate", label: "Generate" },
+  { id: "demo", label: "Full Demo" },
   { id: "onboarding", label: "Voice Setup" },
   { id: "dashboard", label: "Dashboard" },
   { id: "how", label: "How It Works" },
@@ -18,7 +20,7 @@ const NAV_ITEMS = [
 ];
 
 export default function App() {
-  const [page, setPage] = useState("demo");
+  const [page, setPage] = useState("generate");
 
   useEffect(() => {
     const handler = (e) => setPage(e.detail);
@@ -49,7 +51,7 @@ export default function App() {
         zIndex: 100,
       }}>
         <div
-          onClick={() => setPage("demo")}
+          onClick={() => setPage("generate")}
           style={{ cursor: "pointer" }}
         >
           <span style={{
@@ -97,6 +99,7 @@ export default function App() {
 
       {/* Pages */}
       <main>
+        {page === "generate" && <SimpleGenerator />}
         {page === "demo" && <Demo />}
         {page === "onboarding" && <Onboarding />}
         {page === "dashboard" && <Dashboard />}
