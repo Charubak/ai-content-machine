@@ -133,6 +133,11 @@ class UpdateVoiceRequest(BaseModel):
     performance_insights: str = ""
 
 
+class ResearchRequest(BaseModel):
+    research_input: str          # What to research (broad or specific)
+    project_context: str = ""    # Optional: their project/brand for relevance filtering
+
+
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @app.get("/")
@@ -210,6 +215,97 @@ X single: under 240 chars, no hashtags"""
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Research-backed content generation ---
+
+@app.post("/research")
+def research_generate(req: ResearchRequest):
+    """
+    Research-backed content generation.
+
+    Accepts a broad or specific research direction:
+      - Broad: "find what's relevant to my cross-chain bridge protocol"
+      - Specific: "Kelp DAO exploit and what it means for restaking"
+
+    If TAVILY_API_KEY is set: searches the live web and extracts narrative angles.
+    Otherwise: falls back to Claude's knowledge base (flagged clearly in response).
+
+    Returns 1-3 angles, each with a LinkedIn short post and X single tweet.
+    """
+    from inputs.researcher import research_topic
+
+    # Ensure demo voice doc exists (reused as base voice for research content)
+    demo_voice_path = Path(VOICES_PATH) / "demo"
+    demo_voice_path.mkdir(parents=True, exist_ok=True)
+    demo_voice_file = demo_voice_path / "voice_v1.md"
+    if not demo_voice_file.exists():
+        demo_voice = """# Voice Document: Demo
+## IDENTITY
+A senior Web3/AI growth marketer who builds AI tools and has run protocol launches.
+## TONE PROFILE
+Direct, technical credibility, accessible delivery. Has opinions. Shows the work.
+## VOICE RULES
+Banned words: delve, tapestry, vibrant, pivotal, leverage, synergy, robust, seamless, groundbreaking, transformative, stakeholders, cultivate, showcase, foster, innovative, cutting-edge
+No em dashes. No hollow affirmatives. No filler phrases.
+Short hook opener, then develop with depth. Specific examples over vague generalisations.
+## FORMAT RULES
+LinkedIn short: 150-250 words, one sharp observation
+X single: under 240 chars, no hashtags"""
+        demo_voice_file.write_text(demo_voice)
+
+    try:
+        angles, search_powered = research_topic(
+            research_input=req.research_input,
+            project_context=req.project_context,
+            client=client,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Research failed: {str(e)}")
+
+    if not angles:
+        raise HTTPException(
+            status_code=422,
+            detail="No research angles found. Try a more specific query."
+        )
+
+    results = []
+    for angle in angles[:3]:
+        source_text = angle.raw_text
+        if req.project_context and angle.relevance:
+            source_text += f"\n\nContext relevance: {angle.relevance}"
+        if angle.key_facts:
+            source_text += f"\n\nKey facts: {'; '.join(angle.key_facts)}"
+
+        try:
+            content = generate_reaction(
+                client_id="demo",
+                narrative_text=source_text[:1800],
+                narrative_source=angle.source_url or angle.source_title or "Research",
+                client=client,
+                voices_path=VOICES_PATH,
+            )
+        except Exception:
+            content = {}
+
+        results.append({
+            "headline": angle.headline,
+            "source_url": angle.source_url,
+            "source_title": angle.source_title,
+            "key_facts": angle.key_facts,
+            "relevance": angle.relevance,
+            "from_live_search": angle.from_live_search,
+            "linkedin_short": content.get("linkedin_short", ""),
+            "x_single": content.get("x_single", ""),
+            "linkedin_score": content.get("linkedin_short_score"),
+            "x_score": content.get("x_single_score"),
+        })
+
+    return {
+        "angles": results,
+        "search_powered": search_powered,
+        "angle_count": len(results),
+    }
 
 
 # --- Onboarding ---
