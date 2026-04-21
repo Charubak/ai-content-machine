@@ -233,38 +233,76 @@ def generate_reaction(
     narrative_text: str,
     narrative_source: str,
     client: anthropic.Anthropic,
-    voices_path: str = "voices"
+    voices_path: str = "voices",
+    project_context: str = ""
 ) -> dict:
     """
     Fast-path generation for narrative hijacking.
     Takes a trending topic or breaking news item, generates a reaction post quickly.
     Optimised for speed: returns LinkedIn short + X single only.
+
+    If project_context is provided, the content is written FROM the project's
+    perspective — the narrative becomes the setup, the project becomes the answer.
+    This is content marketing / narrative hijacking, not journalism.
     """
     voice_doc = load_voice_document(client_id, base_path=voices_path)
 
-    system = f"""You are generating a fast reaction post for a breaking narrative.
+    if project_context.strip():
+        perspective_block = f"""
+## CRITICAL: THIS IS NARRATIVE HIJACKING FROM THE PROJECT'S PERSPECTIVE
+
+The writer's project: {project_context}
+
+You are writing content marketing, not journalism. The narrative/event is the SETUP.
+The project is the PROTAGONIST and the ANSWER.
+
+Rules for writing with project context:
+- Write in first person ("we", "I") from the project's perspective
+- Use the narrative to make the case for WHY THIS PROJECT matters RIGHT NOW
+- The implicit or explicit message: "this is exactly the problem we're solving"
+- Do NOT write as a detached market observer or commentator
+- Do NOT narrate what "the teams building in this direction" are doing — YOU are those teams
+- Reference the project's specific approach, technology, or insight as the answer
+- A reader should finish the post thinking: "this team called it" or "I need to learn more about them"
+- The event/narrative should feel like validation of the project's thesis, not a separate story
+
+Bad: "The teams building X aren't getting enough attention. They should be."
+Good: "We've been building X for [timeframe] because we saw this coming. [Narrative] just confirmed it."
+"""
+    else:
+        perspective_block = """
+## PERSPECTIVE: INFORMED INSIDER
+
+Write as someone with deep firsthand knowledge of this space.
+Takes a clear, specific position. Not a detached analyst — someone who has skin in the game.
+"""
+
+    system = f"""You are generating a fast reaction post that uses a breaking narrative or research finding.
 
 {voice_doc}
 
-Generate a reaction that:
-- Responds to the specific thing that happened, not a generic take on the topic
-- Uses the brand's voice and draws on their specific experience
-- Takes a clear position — don't sit on the fence
-- Is timely without being reckless
+{perspective_block}
+
+Content quality rules:
+- No em dashes. No ellipsis. No filler phrases.
+- Hook is the sharpest, most specific sentence about what this means
+- Every sentence adds something — no restatement
+- Stakes: what does this cost people who get it wrong?
+- Landing: a sharp final line that reframes the whole post
 
 Return ONLY valid JSON:
 {{
-  "linkedin_short": "150-250 word LinkedIn reaction post",
-  "x_single": "single tweet under 240 chars taking a clear position"
+  "linkedin_short": "150-250 words. First sentence stops the scroll — specific claim, not scene-setting. Middle earns the point with a specific detail or number. Last sentence is a landing, not a CTA.",
+  "x_single": "Under 240 characters. One specific, arguable claim. No hashtags."
 }}"""
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1000,
+        max_tokens=1200,
         system=system,
         messages=[{
             "role": "user",
-            "content": f"Source: {narrative_source}\n\nContent:\n{narrative_text[:1500]}"
+            "content": f"Source: {narrative_source}\n\nNarrative/research:\n{narrative_text[:1800]}"
         }]
     )
 

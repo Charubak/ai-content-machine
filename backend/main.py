@@ -271,11 +271,16 @@ X single: under 240 chars, no hashtags"""
 
     results = []
     for angle in angles[:3]:
-        source_text = angle.raw_text
-        if req.project_context and angle.relevance:
-            source_text += f"\n\nContext relevance: {angle.relevance}"
+        # Build narrative context — key facts first (most specific), then raw text
+        facts_block = ""
         if angle.key_facts:
-            source_text += f"\n\nKey facts: {'; '.join(angle.key_facts)}"
+            facts_block = "Key facts:\n" + "\n".join(f"- {f}" for f in angle.key_facts) + "\n\n"
+
+        relevance_block = ""
+        if req.project_context and angle.relevance:
+            relevance_block = f"Why this narrative matters for the project:\n{angle.relevance}\n\n"
+
+        source_text = f"{facts_block}{relevance_block}Background:\n{angle.raw_text}"
 
         try:
             content = generate_reaction(
@@ -284,6 +289,7 @@ X single: under 240 chars, no hashtags"""
                 narrative_source=angle.source_url or angle.source_title or "Research",
                 client=client,
                 voices_path=VOICES_PATH,
+                project_context=req.project_context,
             )
         except Exception:
             content = {}
